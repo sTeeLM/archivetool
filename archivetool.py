@@ -10,6 +10,16 @@ file_stderr = r'C:\Data\Test\stderr.log'
 file_status = r'C:\Data\Test\status.log'
 #############################################
 
+def test_rar_recover(pathname):
+	with open(pathname, 'rb') as f:
+		data = f.read(12)
+	b = bytearray(data)
+	if len(b) == 12:
+		if (b[10] & 0x40) != 0:
+			return 1
+	return 0
+
+
 def find_nonrar(pathname, fstdout, fstderr, fstatus):
 	ext = os.path.splitext(pathname)
 	if ext[1].upper() == '.RAR' :
@@ -47,7 +57,7 @@ def test_rar(pathname, fstdout, fstderr, fstatus):
 
 def addrecover_rar(pathname, fstdout, fstderr, fstatus):
 	ext = os.path.splitext(pathname)
-	if ext[1].upper() == '.RAR' :
+	if ext[1].upper() == '.RAR' and test_rar_recover(pathname) == 0:
 		status = subprocess.call([rar_cmd, "rr5p", pathname], stdout=fstdout, stderr=fstderr, shell=False)
 		print "adding recover record %s : %d" % (pathname, status)
 		fstatus.write("%d,%s\n" % (status, pathname))
