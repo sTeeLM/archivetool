@@ -58,7 +58,7 @@ def create_rar(pathname, fstdout, fstderr, fstatus):
 	ext = os.path.splitext(pathname)
 	if ext[1].upper() != '.RAR' and pathname.upper() != file_status.upper() and pathname.upper() != file_stdout.upper() and pathname.upper() != file_stderr.upper():
 		rar_name = ext[0] + '.rar'
-		status = subprocess.call([rar_cmd, "a", "-rr5p", "-o-", rar_name, pathname], stdout=fstdout, stderr=fstderr, shell=False)
+		status = subprocess.call([rar_cmd, "a", "-rr5p", "-ep", "-o-", rar_name, pathname], stdout=fstdout, stderr=fstderr, shell=False)
 		print "create archive %s : %d" % (pathname, status)
 		fstatus.write("%d,%s\n" % (status, pathname))
 	else:
