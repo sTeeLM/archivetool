@@ -58,7 +58,7 @@ def test_rar(pathname, fstdout, fstderr, fstatus, option):
 
 def addrecover_rar(pathname, fstdout, fstderr, fstatus, option):
     ext = os.path.splitext(pathname)
-    rropt = 'rr%dp' % (option['recovery_percent'])
+    rropt = '-rr%dp' % (option['recovery_percent'])
     if ext[1].upper() == '.RAR':
         if option['force'] or test_rar_recover(pathname) == 0 :
             status = subprocess.call([rar_cmd, rropt, pathname], stdout=fstdout, stderr=fstderr, shell=False)
