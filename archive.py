@@ -1,6 +1,6 @@
 #!/usr/bin/python
 import os,subprocess,sys,getopt
-
+import subprocess
 # global conf
 ##############################################
 rar_cmd = r'C:\Program Files\WinRAR\rar.exe'
@@ -51,7 +51,10 @@ def test_rar(pathname, fstdout, fstderr, fstatus, option):
     ext = os.path.splitext(pathname)
     if ext[1].upper() == '.RAR' :
         status = subprocess.call([rar_cmd, 't', pathname], stdout=fstdout, stderr=fstderr, shell=False)
-        print('testing %s : %d' % (pathname, status))
+        if status == 0:
+            print('\x1b[32mOK\x1b[m : %s' % pathname)
+        else:
+            print('\x1b[31mFAILED\x1b[m : %s' % pathname)
         fstatus.write('%d,%s\n' % (status, pathname))
     else:
         fstatus.write('skip,%s\n' % (pathname))
@@ -145,5 +148,5 @@ def main(argv) :
     log_stdout.close()
     log_stderr.close()
 
-
+subprocess.call('', shell=True)
 main(sys.argv)
