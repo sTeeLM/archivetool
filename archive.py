@@ -8,8 +8,16 @@ unlockrar_cmd = r'D:\Lab\archivetool\RAR Unlocker.exe'
 file_stdout = r'stdout.log'
 file_stderr = r'stderr.log'
 file_status = r'status.log'
+file_continue = r'continue.log'
+##############################################
 
-#############################################
+# global const
+##############################################
+STATUS_OK   = 0
+STATUS_FAIL = 1
+STATUS_SKIP = -1
+##############################################
+
 
 def test_rar_recover(pathname):
     with open(pathname, 'rb') as f:
@@ -33,31 +41,41 @@ def unlock_rar(pathname, fstdout, fstderr, fstatus, option):
     ext = os.path.splitext(pathname)
     if ext[1].upper() == '.RAR' :
         status = subprocess.call([unlockrar_cmd, '--unlock', pathname], stdout=fstdout, stderr=fstderr, shell=False)
-        print('unlocking %s : %d' % (pathname, status))
         fstatus.write('%d,%s\n' % (status, pathname))
+        if status != 0:
+            status = STATUS_FAIL;
+        else:
+            status = STATUS_OK;
     else:
-        fstatus.write('skip,%s\n' % (pathname))
+        status = STATUS_SKIP
+    return status
+    
 
 def lock_rar(pathname, fstdout, fstderr, fstatus, option):
     ext = os.path.splitext(pathname)
     if ext[1].upper() == '.RAR' :
         status = subprocess.call([rar_cmd, 'k', pathname], stdout=fstdout, stderr=fstderr, shell=False)
-        print('locking %s : %d' % (pathname, status))
         fstatus.write('%d,%s\n' % (status, pathname))
+        if status != 0:
+            status = STATUS_FAIL;
+        else:
+            status = STATUS_OK;
     else:
-        fstatus.write('skip,%s\n' % (pathname))
+        status = STATUS_SKIP
+    return status
 
 def test_rar(pathname, fstdout, fstderr, fstatus, option):
     ext = os.path.splitext(pathname)
     if ext[1].upper() == '.RAR' :
         status = subprocess.call([rar_cmd, 't', pathname], stdout=fstdout, stderr=fstderr, shell=False)
-        if status == 0:
-            print('\x1b[32mOK\x1b[m : %s' % pathname)
-        else:
-            print('\x1b[31mFAILED\x1b[m : %s' % pathname)
         fstatus.write('%d,%s\n' % (status, pathname))
+        if status != 0:
+            status = STATUS_FAIL;
+        else:
+            status = STATUS_OK;
     else:
-        fstatus.write('skip,%s\n' % (pathname))
+        status = STATUS_SKIP
+    return status
 
 def addrecover_rar(pathname, fstdout, fstderr, fstatus, option):
     ext = os.path.splitext(pathname)
@@ -65,24 +83,32 @@ def addrecover_rar(pathname, fstdout, fstderr, fstatus, option):
     if ext[1].upper() == '.RAR':
         if option['force'] or test_rar_recover(pathname) == 0 :
             status = subprocess.call([rar_cmd, rropt, pathname], stdout=fstdout, stderr=fstderr, shell=False)
-            print('adding recover record %s : %d' % (pathname, status))
             fstatus.write('%d,%s\n' % (status, pathname))
+            if status != 0:
+                status = STATUS_FAIL;
+            else:
+                status = STATUS_OK;
         else:
-            fstatus.write('skip,%s\n' % (pathname))
+            status = STATUS_SKIP
     else:
-        fstatus.write('skip,%s\n' % (pathname))
+        status = STATUS_SKIP
+    return status
 
 def create_rar(pathname, fstdout, fstderr, fstatus, option):
     ext = os.path.splitext(pathname)
     rropt = '-rr%dp' % (option['recovery_percent'])
     volopt = '-v' + option['volume_size']
-    if ext[1].upper() != '.RAR' and pathname.upper() != file_status.upper() and pathname.upper() != file_stdout.upper() and pathname.upper() != file_stderr.upper():
+    if ext[1].upper() != '.RAR':
         rar_name = ext[0] + '.rar'
         status = subprocess.call([rar_cmd, 'a', rropt, volopt, '-ep', '-o-', '-df', rar_name, pathname], stdout=fstdout, stderr=fstderr, shell=False)
-        print('create archive %s : %d' % (pathname, status))
         fstatus.write('%d,%s\n' % (status, pathname))
+        if status != 0:
+            status = STATUS_FAIL;
+        else:
+            status = STATUS_OK;
     else:
-        fstatus.write('skip,%s\n' % (pathname))
+        status = STATUS_SKIP
+    return status
 
 def usage():
     print('archive.py cmd <options> directory')
@@ -105,6 +131,7 @@ def main(argv) :
     'create': create_rar, 
     'listnonrar': list_nonrar}
     options_hash = {'volume_size':'2g', 'force':False, 'recovery_percent':15}
+    file_list = []
     try:
         opts,args = getopt.getopt(sys.argv[2:], 'v:r:hf', ['volume-size=','recovery-percent=','help', 'force'])
         for opt,arg in opts:
@@ -135,15 +162,63 @@ def main(argv) :
         usage()
         sys.exit(1)
     
-    log_stdout = open(file_stdout, 'w')
-    log_stderr = open(file_stderr, 'w')
-    log_status = open(file_status, 'w')
+    log_stdout = open(file_stdout, 'a')
+    log_stderr = open(file_stderr, 'a')
+    log_status = open(file_status, 'a')
     
+    continue_index = 0;
+    
+    try:
+        with open(file_continue, 'r') as continue_file:
+            continue_index = continue_file.read()
+            continue_index = int(continue_index)
+    except Exception:
+        continue_index = 0
+    
+    total_size = 0
+    done_size  = 0
     for dirpath,dirnames,filenames in os.walk(directory):
         for file in filenames:
-            fullpath=os.path.join(dirpath,file)
-            fun_hash[argv[1]](fullpath, log_stdout, log_stderr, log_status, options_hash)
-
+            fullpath = os.path.join(dirpath,file)
+            file_size = os.path.getsize(fullpath)
+            file_list.append((fullpath, file_size))
+            total_size += file_size;
+    
+    file_list.sort()
+    
+    current_index = 0
+    if cmd != 'listnonrar' :
+        print('continue index is %d' % continue_index)
+        for pathname,file_size in file_list:
+            if current_index < continue_index:
+                current_index += 1
+                done_size += file_size;
+                progress = int(done_size * 100 / total_size)
+                print('continue \x1b[33mSKIP\x1b[m [%03d%%]: %s' % (progress, pathname))
+                continue
+            status = fun_hash[argv[1]](pathname, log_stdout, log_stderr, log_status, options_hash)
+            done_size += file_size;
+            progress = int(done_size * 100 / total_size)
+            if status == STATUS_OK:
+                print('%s \x1b[32mOK  \x1b[m [%03d%%]: %s' % (cmd, progress, pathname))
+            elif status == STATUS_SKIP:
+                print('%s \x1b[33mSKIP\x1b[m [%03d%%]: %s' % (cmd, progress, pathname))
+            else:
+                print('%s \x1b[31mFAIL\x1b[m [%03d%%]: %s' % (cmd, progress, pathname))
+            current_index += 1
+            log_status.flush()
+            log_stdout.flush()
+            log_stderr.flush()
+            try:
+                with open(file_continue, 'w') as continue_file:
+                    continue_file.write(str(current_index))
+                    continue_file.flush()
+            except Exception:
+                pass
+    else:
+        for pathname,file_size in file_list: # list_nonrar
+            fun_hash[argv[1]](pathname, log_stdout, log_stderr, log_status, options_hash)
+            
     log_status.close()
     log_stdout.close()
     log_stderr.close()
