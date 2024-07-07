@@ -40,7 +40,7 @@ def list_nonrar(pathname, fstdout, fstderr, fstatus, option):
 def unlock_rar(pathname, fstdout, fstderr, fstatus, option):
     ext = os.path.splitext(pathname)
     if ext[1].upper() == '.RAR' :
-        status = subprocess.call([unlockrar_cmd, '--unlock', pathname], stdout=fstdout, stderr=fstderr, shell=False)
+        status = subprocess.call([unlockrar_cmd, '--unlock', pathname], stdin = None, stdout=fstdout, stderr=fstderr, shell=False)
         fstatus.write('%d,%s\n' % (status, pathname))
         if status != 0:
             status = STATUS_FAIL;
@@ -54,7 +54,7 @@ def unlock_rar(pathname, fstdout, fstderr, fstatus, option):
 def lock_rar(pathname, fstdout, fstderr, fstatus, option):
     ext = os.path.splitext(pathname)
     if ext[1].upper() == '.RAR' :
-        status = subprocess.call([rar_cmd, 'k', pathname], stdout=fstdout, stderr=fstderr, shell=False)
+        status = subprocess.call([rar_cmd, 'k', pathname], stdin = None, stdout=fstdout, stderr=fstderr, shell=False)
         fstatus.write('%d,%s\n' % (status, pathname))
         if status != 0:
             status = STATUS_FAIL;
@@ -67,7 +67,7 @@ def lock_rar(pathname, fstdout, fstderr, fstatus, option):
 def test_rar(pathname, fstdout, fstderr, fstatus, option):
     ext = os.path.splitext(pathname)
     if ext[1].upper() == '.RAR' :
-        status = subprocess.call([rar_cmd, 't', pathname], stdout=fstdout, stderr=fstderr, shell=False)
+        status = subprocess.call([rar_cmd, 't', pathname], stdin = None, stdout=fstdout, stderr=fstderr, shell=False)
         fstatus.write('%d,%s\n' % (status, pathname))
         if status != 0:
             status = STATUS_FAIL;
@@ -82,7 +82,7 @@ def addrecover_rar(pathname, fstdout, fstderr, fstatus, option):
     rropt = '-rr%dp' % (option['recovery_percent'])
     if ext[1].upper() == '.RAR':
         if option['force'] or test_rar_recover(pathname) == 0 :
-            status = subprocess.call([rar_cmd, rropt, pathname], stdout=fstdout, stderr=fstderr, shell=False)
+            status = subprocess.call([rar_cmd, rropt, pathname], stdin = None, stdout=fstdout, stderr=fstderr, shell=False)
             fstatus.write('%d,%s\n' % (status, pathname))
             if status != 0:
                 status = STATUS_FAIL;
@@ -100,7 +100,8 @@ def create_rar(pathname, fstdout, fstderr, fstatus, option):
     volopt = '-v' + option['volume_size']
     if ext[1].upper() != '.RAR':
         rar_name = ext[0] + '.rar'
-        status = subprocess.call([rar_cmd, 'a', rropt, volopt, '-ep', '-o-', '-df', rar_name, pathname], stdout=fstdout, stderr=fstderr, shell=False)
+        status = subprocess.call([rar_cmd, 'a', rropt, volopt, '-ep', '-o-', '-df', rar_name, pathname], 
+            stdin = None, stdout=fstdout, stderr=fstderr, shell=False)
         fstatus.write('%d,%s\n' % (status, pathname))
         if status != 0:
             status = STATUS_FAIL;
@@ -116,7 +117,7 @@ def usage():
     print('    lock: lock rar files')
     print('    unlock: unlock rar files')
     print('    addrecover <-f|-force> <-r|--recovery-percent=num>, add recovery information:')
-    print('        default not forced, recovery percent 5')
+    print('        default not forced, recovery percent 15')
     print('    create <-r|--recovery-percent=num> <-v|--volume-size=num|kKmMgG>: make all non-rar files into rar')
     print('        default recovery percent 1, volume size 2g')
     print('    listnonrar: find all non rar files')
@@ -162,9 +163,9 @@ def main(argv) :
         usage()
         sys.exit(1)
     
-    log_stdout = open(file_stdout, 'a')
-    log_stderr = open(file_stderr, 'a')
-    log_status = open(file_status, 'a')
+    log_stdout = open(file_stdout, 'a', encoding='utf-8')
+    log_stderr = open(file_stderr, 'a', encoding='utf-8')
+    log_status = open(file_status, 'a', encoding='utf-8')
     
     continue_index = 0;
     
